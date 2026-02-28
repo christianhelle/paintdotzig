@@ -113,14 +113,117 @@ pub const Bmp = struct {
     pub fn writeFile(image: *const Image, path: []const u8) !void {
         const file = try std.fs.cwd().createFile(path, .{});
         defer file.close();
-        try write(image, file.writer());
+
+        const w = image.width;
+        const h = image.height;
+        const row_size = w * 4;
+        const padding_amount = (4 - (row_size % 4)) % 4;
+        const padded_row = row_size + padding_amount;
+        const pixel_data_size: u32 = padded_row * h;
+        const file_size: u32 = 54 + pixel_data_size;
+
+        // Build header (54 bytes)
+        var header: [54]u8 = undefined;
+        header[0] = 'B';
+        header[1] = 'M';
+        std.mem.writeInt(u32, header[2..6], file_size, .little);
+        std.mem.writeInt(u16, header[6..8], 0, .little);
+        std.mem.writeInt(u16, header[8..10], 0, .little);
+        std.mem.writeInt(u32, header[10..14], 54, .little);
+        std.mem.writeInt(u32, header[14..18], 40, .little);
+        std.mem.writeInt(i32, header[18..22], @intCast(w), .little);
+        std.mem.writeInt(i32, header[22..26], @intCast(h), .little);
+        std.mem.writeInt(u16, header[26..28], 1, .little);
+        std.mem.writeInt(u16, header[28..30], 32, .little);
+        std.mem.writeInt(u32, header[30..34], 0, .little);
+        std.mem.writeInt(u32, header[34..38], pixel_data_size, .little);
+        std.mem.writeInt(i32, header[38..42], 2835, .little);
+        std.mem.writeInt(i32, header[42..46], 2835, .little);
+        std.mem.writeInt(u32, header[46..50], 0, .little);
+        std.mem.writeInt(u32, header[50..54], 0, .little);
+
+        // Allocate pixel data buffer
+        const allocator = image.allocator;
+        const buf = try allocator.alloc(u8, @as(usize, file_size));
+        defer allocator.free(buf);
+        @memcpy(buf[0..54], &header);
+
+        var offset: usize = 54;
+        const pad_bytes = [_]u8{0} ** 4;
+        var y: u32 = 0;
+        while (y < h) : (y += 1) {
+            const row_y = h - 1 - y;
+            var x: u32 = 0;
+            while (x < w) : (x += 1) {
+                const color = image.getPixel(x, row_y) orelse Color.transparent;
+                buf[offset] = color.b;
+                buf[offset + 1] = color.g;
+                buf[offset + 2] = color.r;
+                buf[offset + 3] = color.a;
+                offset += 4;
+            }
+            if (padding_amount > 0) {
+                @memcpy(buf[offset .. offset + padding_amount], pad_bytes[0..padding_amount]);
+                offset += padding_amount;
+            }
+        }
+
+        try file.writeAll(buf[0..offset]);
     }
 
     /// Read BMP from a file
     pub fn readFile(allocator: std.mem.Allocator, path: []const u8) !Image {
         const file = try std.fs.cwd().openFile(path, .{});
         defer file.close();
-        return read(allocator, file.reader());
+
+        // Read entire file into memory
+        const stat = try file.stat();
+        const data = try allocator.alloc(u8, stat.size);
+        defer allocator.free(data);
+        const bytes_read = try file.readAll(data);
+        if (bytes_read < 54) return error.InvalidBmpFormat;
+
+        // Parse BMP header
+        if (data[0] != 'B' or data[1] != 'M') return error.InvalidBmpFormat;
+
+        const data_offset = std.mem.readInt(u32, data[10..14], .little);
+        const header_size = std.mem.readInt(u32, data[14..18], .little);
+        if (header_size < 40) return error.UnsupportedBmpHeader;
+
+        const width_i32 = std.mem.readInt(i32, data[18..22], .little);
+        const height_i32 = std.mem.readInt(i32, data[22..26], .little);
+        const bottom_up = height_i32 > 0;
+        const width: u32 = @intCast(@abs(width_i32));
+        const height: u32 = @intCast(@abs(height_i32));
+
+        const bpp = std.mem.readInt(u16, data[28..30], .little);
+        if (bpp != 24 and bpp != 32) return error.UnsupportedBppFormat;
+
+        var img = try Image.init(allocator, width, height);
+        errdefer img.deinit();
+
+        const bytes_per_pixel: u32 = bpp / 8;
+        const row_bytes = width * bytes_per_pixel;
+        const row_padding = (4 - (row_bytes % 4)) % 4;
+
+        var offset: usize = @intCast(data_offset);
+        var y: u32 = 0;
+        while (y < height) : (y += 1) {
+            const actual_y = if (bottom_up) height - 1 - y else y;
+            var x: u32 = 0;
+            while (x < width) : (x += 1) {
+                if (offset + bytes_per_pixel > bytes_read) return error.InvalidBmpFormat;
+                const b = data[offset];
+                const g = data[offset + 1];
+                const r = data[offset + 2];
+                const a: u8 = if (bpp == 32) data[offset + 3] else 255;
+                img.setPixel(x, actual_y, Color.init(r, g, b, a));
+                offset += bytes_per_pixel;
+            }
+            offset += row_padding;
+        }
+
+        return img;
     }
 };
 
