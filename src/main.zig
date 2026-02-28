@@ -9,4 +9,6 @@ test "imports" {
     _ = @import("core/color.zig");
     _ = @import("core/image.zig");
     _ = @import("core/layer.zig");
+    _ = @import("core/history.zig");
+    _ = @import("core/selection.zig");
 }
