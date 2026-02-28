@@ -1,0 +1,57 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, "copilot/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig 0.15.x
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.15.2"
+
+      - name: Install SDL2 (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Install SDL2 (macOS)
+        if: runner.os == 'macOS'
+        run: brew install sdl2
+
+      - name: Install SDL2 (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $SDL2_VERSION = "2.30.0"
+          $SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-devel-${SDL2_VERSION}-VC.zip"
+          Invoke-WebRequest -Uri $SDL2_URL -OutFile SDL2.zip
+          Expand-Archive -Path SDL2.zip -DestinationPath $env:USERPROFILE\SDL2
+          echo "SDL2_DIR=$env:USERPROFILE\SDL2\SDL2-${SDL2_VERSION}" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Run unit tests
+        run: zig build test --summary all
+
+      - name: Build executable (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: zig build -Doptimize=ReleaseFast
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: paintdotzig-linux
+          path: zig-out/bin/paintdotzig
+          if-no-files-found: ignore

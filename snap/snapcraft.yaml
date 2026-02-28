@@ -1,0 +1,59 @@
+name: paintdotzig
+base: core22
+version: "0.1.0"
+summary: Fast cross-platform image editor inspired by Paint.NET
+description: |
+  Paint.Zig is a fast, cross-platform image and photo editing application
+  built with Zig and SDL2. Inspired by Paint.NET, it offers a responsive
+  immediate-mode UI designed for maximum performance and minimal memory usage.
+
+  Features:
+  - Layered canvas with multiple blend modes
+  - Pencil, brush, eraser, fill, and shape tools
+  - Undo/redo with configurable history depth
+  - BMP image import and export
+  - Zoom and pan with keyboard shortcuts
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+    build-for: amd64
+
+apps:
+  paintdotzig:
+    command: bin/paintdotzig
+    plugs:
+      - x11
+      - wayland
+      - opengl
+      - home
+      - removable-media
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio
+
+parts:
+  paintdotzig:
+    plugin: nil
+    source: .
+    build-packages:
+      - libsdl2-dev
+      - wget
+      - xz-utils
+    stage-packages:
+      - libsdl2-2.0-0
+      - libgl1
+      - libgles2
+    override-build: |
+      # Install Zig
+      ZIG_VERSION="0.15.2"
+      ZIG_URL="https://ziglang.org/builds/zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
+      wget -q "${ZIG_URL}" -O /tmp/zig.tar.xz
+      tar -xf /tmp/zig.tar.xz -C /tmp
+      ZIG="/tmp/zig-linux-x86_64-${ZIG_VERSION}/zig"
+
+      # Build
+      ${ZIG} build -Doptimize=ReleaseFast --prefix "${SNAPCRAFT_PART_INSTALL}"
+    organize:
+      bin/paintdotzig: bin/paintdotzig
