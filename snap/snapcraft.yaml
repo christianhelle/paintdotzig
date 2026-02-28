@@ -1,0 +1,55 @@
+name: paintdotzig
+base: core24
+version: '0.1.0'
+summary: A fast, cross-platform image editor written in Zig
+description: |
+  Paint.Zig is a high-performance image editor inspired by Paint.NET,
+  built from scratch in Zig for maximum speed and minimal memory usage.
+  Features include layers, blend modes, selection tools, drawing tools,
+  image effects, color adjustments, and support for common image formats.
+
+grade: devel
+confinement: strict
+
+architectures:
+  - build-on: [amd64]
+    build-for: [amd64]
+  - build-on: [arm64]
+    build-for: [arm64]
+
+apps:
+  paintdotzig:
+    command: bin/paintdotzig
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+      - home
+
+parts:
+  zig:
+    plugin: nil
+    build-packages:
+      - wget
+      - xz-utils
+    override-build: |
+      ZIG_VERSION="0.15.2"
+      ARCH=$(dpkg --print-architecture)
+      case "$ARCH" in
+        amd64) ZIG_ARCH="x86_64" ;;
+        arm64) ZIG_ARCH="aarch64" ;;
+        *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+      esac
+      wget -q "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+      tar xf "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+      cp -r "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}" "$CRAFT_PART_INSTALL/zig"
+
+  paintdotzig:
+    after: [zig]
+    plugin: nil
+    source: .
+    override-build: |
+      export PATH="$CRAFT_STAGE/zig:$PATH"
+      zig build --release=fast --prefix "$CRAFT_PART_INSTALL"
