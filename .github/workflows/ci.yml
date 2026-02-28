@@ -20,6 +20,10 @@ jobs:
         with:
           version: 0.15.2
 
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+
       - name: Build
         run: zig build
 
