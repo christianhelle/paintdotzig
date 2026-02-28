@@ -11,4 +11,5 @@ test "imports" {
     _ = @import("core/layer.zig");
     _ = @import("core/history.zig");
     _ = @import("core/selection.zig");
+    _ = @import("core/canvas.zig");
 }
