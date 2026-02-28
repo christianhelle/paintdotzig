@@ -4,6 +4,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const raylib_zig = b.dependency("raylib_zig", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const raylib_mod = raylib_zig.module("raylib");
+    const raylib_artifact = raylib_zig.artifact("raylib");
+
     const exe = b.addExecutable(.{
         .name = "paintdotzig",
         .root_module = b.createModule(.{
@@ -12,6 +19,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    exe.root_module.addImport("raylib", raylib_mod);
+    exe.linkLibrary(raylib_artifact);
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
