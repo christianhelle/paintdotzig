@@ -8,4 +8,5 @@ pub fn main() !void {
 test "imports" {
     _ = @import("core/color.zig");
     _ = @import("core/image.zig");
+    _ = @import("core/layer.zig");
 }
