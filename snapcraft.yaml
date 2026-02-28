@@ -1,0 +1,69 @@
+name: paintdotzig
+base: core22
+version: 0.1.0
+summary: A fast cross-platform image editor written in Zig
+description: |
+  Paint.Zig is an image and photo editing application inspired by Paint.NET,
+  built with Zig for maximum performance and low memory footprint. It features
+  an immediate-mode GPU-accelerated UI powered by raylib, layer-based editing,
+  multiple drawing tools, and undo/redo history.
+
+grade: stable
+confinement: strict
+
+apps:
+  paintdotzig:
+    command: bin/paintdotzig
+    plugs:
+      - home
+      - removable-media
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+
+parts:
+  zig:
+    plugin: nil
+    build-packages:
+      - curl
+      - xz-utils
+    override-build: |
+      snap install zig --classic --beta
+
+  raylib:
+    plugin: nil
+    build-packages:
+      - git
+      - cmake
+      - build-essential
+      - libx11-dev
+      - libxrandr-dev
+      - libxinerama-dev
+      - libxcursor-dev
+      - libxi-dev
+      - libgl-dev
+    override-build: |
+      git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
+      cd /tmp/raylib/src
+      make PLATFORM=PLATFORM_DESKTOP
+      make install DESTDIR=$SNAPCRAFT_PART_INSTALL PREFIX=/usr
+
+  paintdotzig:
+    after: [zig, raylib]
+    plugin: nil
+    source: .
+    override-build: |
+      export PATH="$SNAPCRAFT_STAGE/zig:$PATH"
+      zig build -Doptimize=ReleaseFast
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      cp zig-out/bin/paintdotzig $SNAPCRAFT_PART_INSTALL/bin/
+    stage-packages:
+      - libc6
+      - libgl1
+      - libx11-6
+      - libxrandr2
+      - libxinerama1
+      - libxcursor1
+      - libxi6
