@@ -12,4 +12,6 @@ test "imports" {
     _ = @import("core/history.zig");
     _ = @import("core/selection.zig");
     _ = @import("core/canvas.zig");
+    _ = @import("effects/effects.zig");
+    _ = @import("adjustments/adjustments.zig");
 }
