@@ -196,3 +196,43 @@ test "ToolState color_picker is no-op" {
     // should remain transparent
     try std.testing.expect(image.getPixel(2, 2).?.eql(Color.transparent));
 }
+
+test "ToolState ellipse applyAt is no-op" {
+    const allocator = std.testing.allocator;
+    var image = try Image.init(allocator, 4, 4);
+    defer image.deinit();
+
+    const tool = ToolState{ .kind = .ellipse };
+    tool.applyAt(&image, 2, 2);
+    try std.testing.expect(image.getPixel(2, 2).?.eql(Color.transparent));
+}
+
+test "ToolState ellipse applyStroke is no-op" {
+    const allocator = std.testing.allocator;
+    var image = try Image.init(allocator, 4, 4);
+    defer image.deinit();
+
+    const tool = ToolState{ .kind = .ellipse };
+    tool.applyStroke(&image, 0, 0, 3, 3);
+    try std.testing.expect(image.getPixel(2, 2).?.eql(Color.transparent));
+}
+
+test "ToolState select_rect applyAt is no-op" {
+    const allocator = std.testing.allocator;
+    var image = try Image.init(allocator, 4, 4);
+    defer image.deinit();
+
+    const tool = ToolState{ .kind = .select_rect };
+    tool.applyAt(&image, 2, 2);
+    try std.testing.expect(image.getPixel(2, 2).?.eql(Color.transparent));
+}
+
+test "ToolState select_rect applyStroke is no-op" {
+    const allocator = std.testing.allocator;
+    var image = try Image.init(allocator, 4, 4);
+    defer image.deinit();
+
+    const tool = ToolState{ .kind = .select_rect };
+    tool.applyStroke(&image, 0, 0, 3, 3);
+    try std.testing.expect(image.getPixel(2, 2).?.eql(Color.transparent));
+}
