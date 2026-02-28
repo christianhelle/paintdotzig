@@ -14,4 +14,6 @@ test "imports" {
     _ = @import("core/canvas.zig");
     _ = @import("effects/effects.zig");
     _ = @import("adjustments/adjustments.zig");
+    _ = @import("tools/tools.zig");
+    _ = @import("formats/bmp.zig");
 }
